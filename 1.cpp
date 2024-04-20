@@ -1,4 +1,4 @@
-#include "1.hpp"
+#include "1.h"
 
 void MultiSet::copy(const MultiSet &other)
 {

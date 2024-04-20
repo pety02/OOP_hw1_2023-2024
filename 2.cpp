@@ -1,4 +1,4 @@
-#include "2.hpp"
+#include "2.h"
 
 void ModifiableIntegerFunction::copy(const ModifiableIntegerFunction& other) {
     this->function = other.function;
