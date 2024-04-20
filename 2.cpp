@@ -320,10 +320,15 @@ ModifiableIntegerFunction ModifiableIntegerFunction::operator^(int16_t power) co
 ModifiableIntegerFunction ModifiableIntegerFunction::inverse() {
     ModifiableIntegerFunction inverseFunc([this](int16_t y) {
         for (int16_t x = INT16_MIN; x <= INT16_MAX; ++x) {
-            if (this->evaluate(x) == y) {
-                return x;
+            try {
+                if (this->evaluate(x) == y) {
+                    return x;
+                }
+            } catch (...) {
+                break;
             }
         }
+
         throw std::runtime_error("Function is not invertible!");
     });
     return inverseFunc;
