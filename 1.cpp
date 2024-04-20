@@ -29,13 +29,49 @@ void MultiSet::resize()
     this->data = temp;
     this->capacity *= 2;
 }
+void MultiSet::remove(unsigned int number)
+{
+    int index = -1;
+    for (unsigned int i = 0; i < this->size; ++i)
+    {
+        if (this->data[i].number == number)
+        {
+            index = i;
+            break;
+        }
+    }
+
+    if (index != -1)
+    {
+        for (unsigned int i = index; i < this->size - 1; ++i)
+        {
+            this->data[i].number = this->data[i + 1].number;
+            this->data[i].frequency = this->data[i + 1].frequency;
+        }
+        --this->size;
+    }
+}
+bool MultiSet::contains(unsigned int number) const
+{
+    for (unsigned int index = 0; index < this->size; ++index)
+    {
+        if (this->data[index].number == number)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
 MultiSet::MultiSet() : capacity(8), size(0), maxValue(0), maxBits(0), data(new Pair[8])
 {
     
 }
-MultiSet::MultiSet(unsigned int n, unsigned char k) : capacity(8), size(0), maxValue(n), maxBits(k), data(new Pair[8])
+MultiSet::MultiSet(unsigned int n, unsigned char k) : capacity(8), size(0), maxValue(n), maxBits(0), data(new Pair[8])
 {
-    
+    if(1 <= k && k <= 8) {
+        this->maxBits = k;
+    }
 }
 MultiSet::MultiSet(const MultiSet &other)
 {
@@ -65,31 +101,12 @@ void MultiSet::insert(unsigned int number)
         this->data[this->size].frequency = 1;
         this->size++;
     } else if (number <= this->maxValue && this->contains(number)) {
+        if(this->data[this->size].frequency > std::pow(2, this->maxBits) - 1) {
+            throw std::out_of_range("Number limited insertions!");
+        }
         this->data[this->size].frequency++;
     } else {
-        throw std::invalid_argument("Number should be less than " + std::to_string(this->maxValue));
-    }
-}
-void MultiSet::remove(unsigned int number)
-{
-    int index = -1;
-    for (int i = 0; i < this->size; ++i)
-    {
-        if (this->data[i].number == number)
-        {
-            index = i;
-            break;
-        }
-    }
-
-    if (index != -1)
-    {
-        for (int i = index; i < this->size - 1; ++i)
-        {
-            this->data[i].number = this->data[i + 1].number;
-            this->data[i].frequency = this->data[i + 1].frequency;
-        }
-        --this->size;
+        throw std::invalid_argument("Number should be smaller!");
     }
 }
 unsigned int MultiSet::countOccurrences(unsigned int number) const
@@ -122,12 +139,12 @@ void MultiSet::print() const
 void MultiSet::printMemoryRepresentation() const
 {
     unsigned char* rawDataPtr = reinterpret_cast<unsigned char*>(this->data);
-    int totalSize = sizeof(MultiSet::Pair) * this->size;
-    for (size_t i = 0; i < totalSize; ++i) {
-        std::cout << "Byte " << i << ": " << static_cast<int>(rawDataPtr[i]) << std::endl;
+    unsigned int totalSize = sizeof(MultiSet::Pair) * this->size;
+    for (unsigned int index = 0; index < totalSize; ++index) {
+        std::cout << "Byte " << index << ": " << static_cast<int>(rawDataPtr[index]) << std::endl;
     }
 }
-void MultiSet::serilize(const char *fileName) const
+void MultiSet::serialize(const char *fileName) const
 {
     std::ofstream output(fileName, std::ios::out | std::ios::binary | std::ios::app);
     if (output.is_open())
@@ -149,10 +166,10 @@ void MultiSet::serilize(const char *fileName) const
     }
     else
     {
-        std::cout << "File cannot be opened for writing!" << std::endl;
+        throw std::runtime_error("File cannot be opened for writing!");
     }
 }
-MultiSet& MultiSet::deserilize(const char *fileName)
+MultiSet& MultiSet::deserialize(const char *fileName)
 {
     std::ifstream input(fileName, std::ios::in | std::ios::binary);
     if (input.is_open())
@@ -180,7 +197,7 @@ MultiSet& MultiSet::deserilize(const char *fileName)
     }
     else
     {
-        std::cout << "File cannot be opened for reading!" << std::endl;
+        throw std::runtime_error("File cannot be opened for reading!");
     }
 
     return *this;
@@ -224,24 +241,4 @@ MultiSet MultiSet::complement() const
         copyOfThis.data[index].frequency = std::pow(2, this->maxBits) - currentFr - 1;
     }
     return copyOfThis;
-}
-unsigned int MultiSet::getMaxNumber() const
-{
-    return this->maxValue;
-}
-unsigned int MultiSet::getCapacity() const
-{
-    return this->capacity;
-}
-bool MultiSet::contains(unsigned int number) const
-{
-    for (unsigned int index = 0; index < this->size; ++index)
-    {
-        if (this->data[index].number == number)
-        {
-            return true;
-        }
-    }
-
-    return false;
 }

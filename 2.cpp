@@ -50,6 +50,9 @@ void ModifiableIntegerFunction::quickSort(int16_t low, int16_t high) {
         this->quickSort(pi + 1, high);
     }
 }
+void ModifiableIntegerFunction::sort() {
+    this->quickSort(1, this->size - 1);
+}
 ModifiableIntegerFunction::Point& ModifiableIntegerFunction::find(int16_t number) const {
     for(unsigned int index = 0; index < this->size; ++index) {
         if(this->valuesSet[index].number == number) {
@@ -68,11 +71,11 @@ bool ModifiableIntegerFunction::isFound(int16_t number) const {
 
     return false;
 }
-ModifiableIntegerFunction::ModifiableIntegerFunction() : function(nullptr), valuesSet(nullptr), capacity(8), size(0) {
-    this->valuesSet = new ModifiableIntegerFunction::Point[this->capacity];
+ModifiableIntegerFunction::ModifiableIntegerFunction() : function(nullptr), capacity(8), size(0), valuesSet(new ModifiableIntegerFunction::Point[this->capacity]) {
+
 }
-ModifiableIntegerFunction::ModifiableIntegerFunction(LambdaFuncType function) : function(function), valuesSet(nullptr), capacity(8), size(0) {
-    this->valuesSet = new ModifiableIntegerFunction::Point[this->capacity];
+ModifiableIntegerFunction::ModifiableIntegerFunction(LambdaFuncType function) : function(function), capacity(8), size(0), valuesSet(new ModifiableIntegerFunction::Point[this->capacity]) {
+    
 }
 ModifiableIntegerFunction::ModifiableIntegerFunction(const ModifiableIntegerFunction& other) {
     this->copy(other);
@@ -87,10 +90,6 @@ ModifiableIntegerFunction& ModifiableIntegerFunction::operator=(const Modifiable
 }
 ModifiableIntegerFunction::~ModifiableIntegerFunction() {
     this->destroy();
-    std::cout << "Destroying an object..." << std::endl;
-}
-void ModifiableIntegerFunction::sort() {
-    this->quickSort(1, this->size - 1);
 }
 void ModifiableIntegerFunction::add(int16_t number, bool isExcluded) {
     if(this->size == this->capacity) {
@@ -131,21 +130,6 @@ void ModifiableIntegerFunction::excludePoint(int16_t number) {
     } catch (std::runtime_error& ex) {
         std::cout << "Runtime exception occured with message: " << ex.what() << std::endl;
     }
-}
-bool ModifiableIntegerFunction::isColinear(const ModifiableIntegerFunction& other) const {
-    int16_t xCoord = other.valuesSet[0].number - this->valuesSet[0].number, yCoord = other.valuesSet[0].result - this->valuesSet[0].result;
-    int16_t startLen = std::sqrt(xCoord*xCoord + yCoord*yCoord);
-    for(unsigned int index = 1; index < this->size; ++index) {
-        int16_t currXCoord = other.valuesSet[index].number - this->valuesSet[index].number, 
-            currYCoord = other.valuesSet[index].result - this->valuesSet[index].result;
-        int16_t currLen = std::sqrt(currXCoord*currXCoord + currYCoord*currYCoord);
-        if(startLen != currLen) {
-            return false;
-        }
-        startLen = currLen;
-    }
-
-    return true;
 }
 ModifiableIntegerFunction& ModifiableIntegerFunction::operator+=(const ModifiableIntegerFunction& other) {
     this->function = [&] (int16_t number) {
@@ -222,12 +206,12 @@ ModifiableIntegerFunction ModifiableIntegerFunction::operator-(const ModifiableI
     return substractionFunction;
 }
 ModifiableIntegerFunction& ModifiableIntegerFunction::compose(const ModifiableIntegerFunction& other) {
-        LambdaFuncType originalFunc = this->function;
-        this->function = [&](int16_t x) {
-            return other.find(originalFunc(x)).result;
-        };
-        return *this;
-    }
+    ModifiableIntegerFunction f = ModifiableIntegerFunction(this->function);
+    this->function = [&](int16_t x) {
+        return f.function(other.function(x));
+    };
+    return *this;
+}
 bool ModifiableIntegerFunction::operator<(const ModifiableIntegerFunction& other) const {
     bool isSmaller = true;
     for(int16_t x = INT16_MIN; x <= INT16_MAX; ++x) {
@@ -286,6 +270,21 @@ bool ModifiableIntegerFunction::operator==(const ModifiableIntegerFunction& othe
 bool ModifiableIntegerFunction::operator!=(const ModifiableIntegerFunction& other) const {
     return !this->operator==(other);
 }
+bool ModifiableIntegerFunction::isColinear(const ModifiableIntegerFunction& other) const {
+    int16_t xCoord = other.valuesSet[0].number - this->valuesSet[0].number, yCoord = other.valuesSet[0].result - this->valuesSet[0].result;
+    int16_t startLen = std::sqrt(xCoord*xCoord + yCoord*yCoord);
+    for(unsigned int index = 1; index < this->size; ++index) {
+        int16_t currXCoord = other.valuesSet[index].number - this->valuesSet[index].number, 
+            currYCoord = other.valuesSet[index].result - this->valuesSet[index].result;
+        int16_t currLen = std::sqrt(currXCoord*currXCoord + currYCoord*currYCoord);
+        if(startLen != currLen) {
+            return false;
+        }
+        startLen = currLen;
+    }
+
+    return true;
+}
 ModifiableIntegerFunction& ModifiableIntegerFunction::operator^=(int16_t power) {
     if (power <= 0) {
         return *this;
@@ -334,9 +333,9 @@ ModifiableIntegerFunction ModifiableIntegerFunction::inverse() {
     return inverseFunc;
 }
 bool ModifiableIntegerFunction::isInjection() const {
-    for(unsigned int xi = 0; xi < this->size - 1; ++xi) {
-        for(unsigned int xj = xi + 1; xj < this->size; ++xj) {
-            if(this->valuesSet[xi].result == this->valuesSet[xj].result) {
+    for(int16_t xi = 0; xi < this->size - 1; ++xi) {
+        for(int16_t xj = xi + 1; xj < this->size; ++xj) {
+            if(this->function(this->valuesSet[xi].number) == this->function(this->valuesSet[xj].number)) {
                 return false;
             }
         }
@@ -345,8 +344,8 @@ bool ModifiableIntegerFunction::isInjection() const {
     return true;
 }
 bool ModifiableIntegerFunction::isSurjection() const {
-    for (unsigned int xi = 0; xi < size; ++xi) {
-        if (function(xi) == this->valuesSet[xi].result) {
+    for (unsigned int xi = 0; xi < this->size; ++xi) {
+        if (function(this->valuesSet[xi].number) == this->valuesSet[xi].result) {
             return true;
         }
     }
@@ -355,7 +354,7 @@ bool ModifiableIntegerFunction::isSurjection() const {
 bool ModifiableIntegerFunction::isBijection() const {
     return this->isInjection() && this->isSurjection();
 }
-void ModifiableIntegerFunction::serilize(const char* fileName) const {
+void ModifiableIntegerFunction::serialize(const char* fileName) const {
     std::ofstream out(fileName, std::ios::out | std::ios::binary);
     if(out.is_open()) {
         out.write(reinterpret_cast<const char*> (&this->function), sizeof(ModifiableIntegerFunction::LambdaFuncType));
@@ -371,7 +370,7 @@ void ModifiableIntegerFunction::serilize(const char* fileName) const {
         throw std::runtime_error("File is not opened for writing!");
     }
 }
-ModifiableIntegerFunction& ModifiableIntegerFunction::deserilize(const char* fileName) {
+ModifiableIntegerFunction& ModifiableIntegerFunction::deserialize(const char* fileName) {
     std::ifstream in(fileName, std::ios::in | std::ios::binary);
     if(in.is_open()) {
         in.read(reinterpret_cast<char*> (&this->function), sizeof(ModifiableIntegerFunction::LambdaFuncType));
@@ -417,11 +416,5 @@ void ModifiableIntegerFunction::plot(int16_t x1, int16_t x2, int16_t y1, int16_t
         } catch (std::runtime_error& ex) {
             std::cout << 'o' << std::endl; 
         }
-    }
-}
-void ModifiableIntegerFunction::print() const {
-    for(unsigned int index = 0; index < this->size; ++index) {
-        Point currPoint = this->valuesSet[index];
-        std::cout << "[ " << currPoint.number << ", " << currPoint.result << ", " << std::boolalpha << currPoint.isExcluded << " ]" << std::endl;
     }
 }
